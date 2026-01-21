@@ -10,6 +10,7 @@
   <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script>
     window.console.warn = (function(oldWarn) {
       return function(msg) {
@@ -74,170 +75,186 @@
     const generateId = () => Date.now().toString(36) + Math.random().toString(36).substr(2);
     const calculateTotal = (items) => items.reduce((sum, item) => sum + (item.quantity * item.unitPrice), 0);
 
-    // PDF Generation and Email function
-    const generatePdfAndEmail = (document, type, logoDataUrl) => {
+    // PDF Generation function using jsPDF
+    const generatePdf = (document, type, logoDataUrl) => {
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF();
       const isQuote = type === 'quote';
       const docNumber = isQuote ? document.quoteNumber : document.invoiceNumber;
       const total = calculateTotal(document.items).toFixed(2);
-
-      const printHtml = `<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <title>${isQuote ? 'Quotation' : 'Invoice'} ${docNumber}</title>
-  <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { font-family: Arial, sans-serif; background: #fff; }
-    .page { max-width: 800px; margin: 0 auto; }
-    .header { background: linear-gradient(to right, #2563eb, #06b6d4); padding: 30px; display: flex; justify-content: space-between; align-items: flex-start; }
-    .logo-box { background: white; border-radius: 8px; padding: 10px; }
-    .logo-box img { height: 60px; width: auto; }
-    .company-info { text-align: right; color: white; }
-    .company-info p { margin: 4px 0; color: #dbeafe; }
-    .doc-title { padding: 20px 30px; background: #f9fafb; border-bottom: 1px solid #e5e7eb; }
-    .doc-title h1 { font-size: 28px; color: #1f2937; margin-bottom: 5px; }
-    .doc-title .ref { color: #6b7280; font-family: monospace; }
-    .client-section { padding: 20px 30px; border-bottom: 1px solid #e5e7eb; }
-    .section-label { font-size: 10px; color: #6b7280; text-transform: uppercase; font-weight: 600; margin-bottom: 5px; }
-    .client-name { font-weight: 600; color: #1f2937; font-size: 16px; }
-    .client-detail { color: #4b5563; margin: 2px 0; }
-    .dates-row { display: flex; padding: 15px 30px; background: #f9fafb; border-bottom: 1px solid #e5e7eb; }
-    .date-col { flex: 1; }
-    .date-value { color: #1f2937; font-weight: 500; }
-    .items-section { padding: 30px; }
-    table { width: 100%; border-collapse: collapse; }
-    th { text-align: left; padding: 10px 0; font-size: 10px; color: #6b7280; text-transform: uppercase; font-weight: 600; border-bottom: 2px solid #e5e7eb; }
-    th.right { text-align: right; }
-    th.center { text-align: center; }
-    td { padding: 12px 0; border-bottom: 1px solid #f3f4f6; color: #1f2937; }
-    td.right { text-align: right; }
-    td.center { text-align: center; }
-    .total-row { margin-top: 20px; padding-top: 20px; border-top: 2px solid #1f2937; text-align: right; }
-    .total-label { color: #6b7280; margin-right: 20px; }
-    .total-value { font-size: 28px; font-weight: bold; color: #2563eb; }
-    .info-section { padding: 0 30px 20px; }
-    .info-box { background: #f9fafb; border-radius: 8px; padding: 15px; margin-bottom: 15px; }
-    .info-text { color: #374151; font-size: 14px; margin-top: 5px; white-space: pre-line; }
-    .checkatrade { padding: 0 30px 20px; }
-    .checkatrade a { color: #3b82f6; text-decoration: none; font-size: 14px; }
-    .footer { background: #f3f4f6; padding: 15px 30px; text-align: center; border-top: 1px solid #e5e7eb; }
-    .footer p { color: #4b5563; font-size: 14px; }
-    .footer .reg { color: #6b7280; font-size: 12px; margin-top: 5px; }
-    @media print { body { print-color-adjust: exact; -webkit-print-color-adjust: exact; } }
-  </style>
-</head>
-<body>
-  <div class="page">
-    <div class="header">
-      <div class="logo-box"><img src="${logoDataUrl}" alt="Logo"></div>
-      <div class="company-info">
-        <p><strong>${COMPANY_INFO.contact}</strong></p>
-        <p>${COMPANY_INFO.phone}</p>
-        <p>${COMPANY_INFO.email}</p>
-      </div>
-    </div>
-    <div class="doc-title">
-      <h1>${isQuote ? 'Quotation' : 'Invoice'}</h1>
-      <p class="ref">Ref: ${docNumber}</p>
-    </div>
-    <div class="client-section">
-      <p class="section-label">${isQuote ? 'Quote For' : 'Invoice To'}</p>
-      <p class="client-name">${document.client.name}</p>
-      ${document.client.address ? `<p class="client-detail">${document.client.address}</p>` : ''}
-      ${document.client.phone ? `<p class="client-detail">${document.client.phone}</p>` : ''}
-      ${document.client.email ? `<p class="client-detail">${document.client.email}</p>` : ''}
-    </div>
-    <div class="dates-row">
-      <div class="date-col">
-        <p class="section-label">Date</p>
-        <p class="date-value">${formatDate(document.date)}</p>
-      </div>
-      <div class="date-col">
-        <p class="section-label">${isQuote ? 'Valid Until' : 'Due Date'}</p>
-        <p class="date-value">${formatDate(isQuote ? document.validUntil : document.dueDate)}</p>
-      </div>
-    </div>
-    <div class="items-section">
-      <table>
-        <thead>
-          <tr>
-            <th>Description</th>
-            <th class="center" style="width:60px">Qty</th>
-            <th class="right" style="width:80px">Price</th>
-            <th class="right" style="width:80px">Total</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${document.items.map(item => `
-          <tr>
-            <td>${item.description || '-'}</td>
-            <td class="center">${item.quantity}</td>
-            <td class="right">£${item.unitPrice.toFixed(2)}</td>
-            <td class="right"><strong>£${(item.quantity * item.unitPrice).toFixed(2)}</strong></td>
-          </tr>
-          `).join('')}
-        </tbody>
-      </table>
-      <div class="total-row">
-        <span class="total-label">TOTAL</span>
-        <span class="total-value">£${total}</span>
-      </div>
-    </div>
-    ${document.timescale ? `
-    <div class="info-section">
-      <div class="info-box">
-        <p class="section-label">Estimated Timescale</p>
-        <p class="info-text">${document.timescale}</p>
-      </div>
-    </div>
-    ` : ''}
-    ${document.exclusions ? `
-    <div class="info-section">
-      <div class="info-box">
-        <p class="section-label">Significant Exclusions</p>
-        <p class="info-text">${document.exclusions}</p>
-      </div>
-    </div>
-    ` : ''}
-    ${document.paymentTerms ? `
-    <div class="info-section">
-      <div class="info-box">
-        <p class="section-label">Payment Terms</p>
-        <p class="info-text">${document.paymentTerms}</p>
-      </div>
-    </div>
-    ` : ''}
-    ${document.notes ? `
-    <div class="info-section">
-      <div class="info-box">
-        <p class="section-label">Notes</p>
-        <p class="info-text">${document.notes}</p>
-      </div>
-    </div>
-    ` : ''}
-    <div class="checkatrade">
-      <a href="${COMPANY_INFO.checkatrade}">✓ View our reviews on Checkatrade</a>
-    </div>
-    <div class="footer">
-      <p>${COMPANY_INFO.name}</p>
-      <p class="reg">Company Registration: ${COMPANY_INFO.regNumber}</p>
-    </div>
-  </div>
-</body>
-</html>`;
-
-      // Open print window
-      const printWindow = window.open('', '_blank');
-      printWindow.document.write(printHtml);
-      printWindow.document.close();
       
-      printWindow.onload = () => {
-        setTimeout(() => {
-          printWindow.print();
-        }, 250);
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const margin = 20;
+      let y = 20;
+      
+      // Header background
+      doc.setFillColor(37, 99, 235);
+      doc.rect(0, 0, pageWidth, 45, 'F');
+      
+      // Logo placeholder (white box)
+      doc.setFillColor(255, 255, 255);
+      doc.roundedRect(margin, 10, 50, 25, 3, 3, 'F');
+      
+      // Try to add logo
+      try {
+        doc.addImage(logoDataUrl, 'PNG', margin + 2, 12, 46, 21);
+      } catch (e) {
+        doc.setFontSize(8);
+        doc.setTextColor(37, 99, 235);
+        doc.text('SEVERN DAMP', margin + 5, 22);
+        doc.text('PROOFING LTD', margin + 5, 28);
+      }
+      
+      // Company info (right side)
+      doc.setFontSize(10);
+      doc.setTextColor(219, 234, 254);
+      doc.text(COMPANY_INFO.contact, pageWidth - margin, 18, { align: 'right' });
+      doc.text(COMPANY_INFO.phone, pageWidth - margin, 25, { align: 'right' });
+      doc.text(COMPANY_INFO.email, pageWidth - margin, 32, { align: 'right' });
+      
+      y = 55;
+      
+      // Document title
+      doc.setFillColor(249, 250, 251);
+      doc.rect(0, 45, pageWidth, 20, 'F');
+      doc.setFontSize(20);
+      doc.setTextColor(31, 41, 55);
+      doc.text(isQuote ? 'Quotation' : 'Invoice', margin, 58);
+      doc.setFontSize(10);
+      doc.setTextColor(107, 114, 128);
+      doc.text(`Ref: ${docNumber}`, margin, 63);
+      
+      y = 75;
+      
+      // Client details
+      doc.setFontSize(8);
+      doc.setTextColor(107, 114, 128);
+      doc.text(isQuote ? 'QUOTE FOR' : 'INVOICE TO', margin, y);
+      y += 5;
+      doc.setFontSize(11);
+      doc.setTextColor(31, 41, 55);
+      doc.setFont(undefined, 'bold');
+      doc.text(document.client.name, margin, y);
+      doc.setFont(undefined, 'normal');
+      y += 5;
+      doc.setFontSize(10);
+      doc.setTextColor(75, 85, 99);
+      if (document.client.address) { doc.text(document.client.address, margin, y); y += 5; }
+      if (document.client.phone) { doc.text(document.client.phone, margin, y); y += 5; }
+      if (document.client.email) { doc.text(document.client.email, margin, y); y += 5; }
+      
+      y += 5;
+      
+      // Dates row
+      doc.setFillColor(249, 250, 251);
+      doc.rect(0, y - 3, pageWidth, 15, 'F');
+      doc.setFontSize(8);
+      doc.setTextColor(107, 114, 128);
+      doc.text('DATE', margin, y + 2);
+      doc.text(isQuote ? 'VALID UNTIL' : 'DUE DATE', pageWidth / 2, y + 2);
+      doc.setFontSize(10);
+      doc.setTextColor(31, 41, 55);
+      doc.text(formatDate(document.date), margin, y + 8);
+      doc.text(formatDate(isQuote ? document.validUntil : document.dueDate), pageWidth / 2, y + 8);
+      
+      y += 20;
+      
+      // Items table header
+      doc.setFillColor(229, 231, 235);
+      doc.rect(margin, y - 3, pageWidth - (margin * 2), 8, 'F');
+      doc.setFontSize(8);
+      doc.setTextColor(107, 114, 128);
+      doc.text('DESCRIPTION', margin + 2, y + 2);
+      doc.text('QTY', pageWidth - margin - 60, y + 2);
+      doc.text('PRICE', pageWidth - margin - 35, y + 2);
+      doc.text('TOTAL', pageWidth - margin - 10, y + 2, { align: 'right' });
+      
+      y += 10;
+      
+      // Items
+      doc.setFontSize(10);
+      doc.setTextColor(31, 41, 55);
+      document.items.forEach(item => {
+        doc.text(item.description || '-', margin + 2, y);
+        doc.text(String(item.quantity), pageWidth - margin - 55, y);
+        doc.text(`£${item.unitPrice.toFixed(2)}`, pageWidth - margin - 30, y);
+        doc.setFont(undefined, 'bold');
+        doc.text(`£${(item.quantity * item.unitPrice).toFixed(2)}`, pageWidth - margin - 2, y, { align: 'right' });
+        doc.setFont(undefined, 'normal');
+        y += 7;
+        
+        // Draw line
+        doc.setDrawColor(243, 244, 246);
+        doc.line(margin, y - 3, pageWidth - margin, y - 3);
+      });
+      
+      y += 5;
+      
+      // Total
+      doc.setDrawColor(31, 41, 55);
+      doc.setLineWidth(0.5);
+      doc.line(pageWidth - margin - 70, y, pageWidth - margin, y);
+      y += 8;
+      doc.setFontSize(10);
+      doc.setTextColor(107, 114, 128);
+      doc.text('TOTAL', pageWidth - margin - 70, y);
+      doc.setFontSize(16);
+      doc.setTextColor(37, 99, 235);
+      doc.setFont(undefined, 'bold');
+      doc.text(`£${total}`, pageWidth - margin, y, { align: 'right' });
+      doc.setFont(undefined, 'normal');
+      
+      y += 15;
+      
+      // Info sections
+      const addInfoSection = (title, content) => {
+        if (!content) return;
+        if (y > 250) { doc.addPage(); y = 20; }
+        doc.setFillColor(249, 250, 251);
+        doc.roundedRect(margin, y - 3, pageWidth - (margin * 2), 25, 2, 2, 'F');
+        doc.setFontSize(8);
+        doc.setTextColor(107, 114, 128);
+        doc.text(title.toUpperCase(), margin + 5, y + 3);
+        doc.setFontSize(9);
+        doc.setTextColor(55, 65, 81);
+        const lines = doc.splitTextToSize(content, pageWidth - (margin * 2) - 10);
+        doc.text(lines.slice(0, 3), margin + 5, y + 10);
+        y += 30;
       };
       
-      // Also open email with pre-filled content
+      addInfoSection('Estimated Timescale', document.timescale);
+      addInfoSection('Significant Exclusions', document.exclusions);
+      addInfoSection('Payment Terms', document.paymentTerms);
+      addInfoSection('Notes', document.notes);
+      
+      // Checkatrade link
+      if (y > 270) { doc.addPage(); y = 20; }
+      doc.setFontSize(9);
+      doc.setTextColor(59, 130, 246);
+      doc.textWithLink('✓ View our reviews on Checkatrade', margin, y, { url: COMPANY_INFO.checkatrade });
+      
+      y += 15;
+      
+      // Footer
+      if (y > 275) { doc.addPage(); y = 270; }
+      doc.setFillColor(243, 244, 246);
+      doc.rect(0, 280, pageWidth, 20, 'F');
+      doc.setFontSize(10);
+      doc.setTextColor(75, 85, 99);
+      doc.text(COMPANY_INFO.name, pageWidth / 2, 287, { align: 'center' });
+      doc.setFontSize(8);
+      doc.setTextColor(107, 114, 128);
+      doc.text(`Company Registration: ${COMPANY_INFO.regNumber}`, pageWidth / 2, 293, { align: 'center' });
+      
+      // Save the PDF
+      doc.save(`${docNumber}.pdf`);
+    };
+
+    // Email function
+    const openEmail = (document, type) => {
+      const isQuote = type === 'quote';
+      const docNumber = isQuote ? document.quoteNumber : document.invoiceNumber;
+      
       const subject = encodeURIComponent(`${isQuote ? 'Quotation' : 'Invoice'} ${docNumber} from Severn Damp Proofing Ltd`);
       const body = encodeURIComponent(
 `Dear ${document.client.name},
@@ -253,12 +270,7 @@ Tel: ${COMPANY_INFO.phone}
 Company Registration: ${COMPANY_INFO.regNumber}`
       );
       
-      const mailtoLink = `mailto:${document.client.email || ''}?subject=${subject}&body=${body}`;
-      
-      // Small delay to let print window open first
-      setTimeout(() => {
-        window.location.href = mailtoLink;
-      }, 500);
+      window.location.href = `mailto:${document.client.email || ''}?subject=${subject}&body=${body}`;
     };
 
     // Dictation Button Component
@@ -349,7 +361,8 @@ Company Registration: ${COMPANY_INFO.regNumber}`
             <button onClick={onBack} className="px-4 py-2 bg-slate-700 text-white rounded-lg">← Back</button>
             {isQuote && <button onClick={onSave} className="px-4 py-2 bg-cyan-500 text-slate-900 rounded-lg font-bold">Save</button>}
             {!isQuote && document.status === 'unpaid' && <button onClick={() => onMarkPaid(document.id)} className="px-4 py-2 bg-green-500 text-white rounded-lg font-bold">Mark Paid</button>}
-            <button onClick={() => generatePdfAndEmail(document, type, LOGO_DATA_URL)} className="px-4 py-2 bg-blue-500 text-white rounded-lg font-bold">📄 Save PDF & Email</button>
+            <button onClick={() => generatePdf(document, type, LOGO_DATA_URL)} className="px-4 py-2 bg-blue-500 text-white rounded-lg font-bold">📄 Download PDF</button>
+            <button onClick={() => openEmail(document, type)} className="px-4 py-2 bg-green-600 text-white rounded-lg font-bold">✉️ Send Email</button>
           </div>
           
           <div className="bg-white rounded-xl shadow-2xl max-w-3xl mx-auto overflow-hidden">
@@ -479,7 +492,6 @@ Company Registration: ${COMPANY_INFO.regNumber}`
       const [searchTerm, setSearchTerm] = useState('');
       const [filterStatus, setFilterStatus] = useState('all');
       
-      // Saved defaults for exclusions and payment terms
       const [defaultExclusions, setDefaultExclusions] = useState('');
       const [defaultPaymentTerms, setDefaultPaymentTerms] = useState('');
 
@@ -538,13 +550,8 @@ Company Registration: ${COMPANY_INFO.regNumber}`
         else { newQuotes = [...quotes, currentQuote]; }
         setQuotes(newQuotes);
         
-        // Update defaults if changed
-        if (currentQuote.exclusions !== defaultExclusions) {
-          setDefaultExclusions(currentQuote.exclusions);
-        }
-        if (currentQuote.paymentTerms !== defaultPaymentTerms) {
-          setDefaultPaymentTerms(currentQuote.paymentTerms);
-        }
+        if (currentQuote.exclusions !== defaultExclusions) setDefaultExclusions(currentQuote.exclusions);
+        if (currentQuote.paymentTerms !== defaultPaymentTerms) setDefaultPaymentTerms(currentQuote.paymentTerms);
         
         const existingClient = clients.find(c => c.name.toLowerCase() === currentQuote.client.name.toLowerCase());
         if (!existingClient && currentQuote.client.name) {
@@ -595,7 +602,6 @@ Company Registration: ${COMPANY_INFO.regNumber}`
       const outstandingQuotes = quotes.filter(q => q.status === 'sent' || q.status === 'draft');
       const unpaidInvoices = invoices.filter(inv => inv.status === 'unpaid');
 
-      // Update functions for QuoteEditor
       const updateClient = (field, value) => {
         setCurrentQuote(prev => ({ ...prev, client: { ...prev.client, [field]: value } }));
       };
@@ -642,7 +648,6 @@ Company Registration: ${COMPANY_INFO.regNumber}`
         <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
           <Header view={view} setView={setView} />
           <main className="max-w-7xl mx-auto pb-20">
-            {/* Dashboard */}
             {view === 'dashboard' && (
               <div className="p-6 space-y-6">
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -689,7 +694,6 @@ Company Registration: ${COMPANY_INFO.regNumber}`
               </div>
             )}
 
-            {/* Quotes List */}
             {view === 'quotes' && (
               <div className="p-6 space-y-4">
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -734,7 +738,6 @@ Company Registration: ${COMPANY_INFO.regNumber}`
               </div>
             )}
 
-            {/* Quote Editor */}
             {view === 'editQuote' && currentQuote && (
               <div className="p-6 max-w-4xl mx-auto space-y-6">
                 <div className="flex justify-between items-center">
@@ -843,7 +846,6 @@ Company Registration: ${COMPANY_INFO.regNumber}`
               </div>
             )}
 
-            {/* Quote Preview */}
             {view === 'previewQuote' && currentQuote && (
               <DocumentPreview 
                 document={currentQuote} 
@@ -854,7 +856,6 @@ Company Registration: ${COMPANY_INFO.regNumber}`
               />
             )}
 
-            {/* Invoices List */}
             {view === 'invoices' && (
               <div className="p-6 space-y-4">
                 <h2 className="text-2xl font-bold text-white">Invoices</h2>
@@ -886,7 +887,6 @@ Company Registration: ${COMPANY_INFO.regNumber}`
               </div>
             )}
 
-            {/* Invoice Preview */}
             {view === 'viewInvoice' && currentInvoice && (
               <DocumentPreview 
                 document={currentInvoice} 
@@ -897,7 +897,6 @@ Company Registration: ${COMPANY_INFO.regNumber}`
               />
             )}
 
-            {/* Clients List */}
             {view === 'clients' && (
               <div className="p-6 space-y-4">
                 <h2 className="text-2xl font-bold text-white">Clients</h2>
@@ -922,7 +921,6 @@ Company Registration: ${COMPANY_INFO.regNumber}`
       );
     }
 
-    // Splash screen logic
     setTimeout(() => {
       document.getElementById('splash').classList.add('fade-out');
       document.getElementById('root').classList.add('show');
