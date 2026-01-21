@@ -10,7 +10,7 @@
   <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
   <script>
     window.console.warn = (function(oldWarn) {
       return function(msg) {
@@ -75,179 +75,23 @@
     const generateId = () => Date.now().toString(36) + Math.random().toString(36).substr(2);
     const calculateTotal = (items) => items.reduce((sum, item) => sum + (item.quantity * item.unitPrice), 0);
 
-    // PDF Generation function using jsPDF
-    const generatePdf = (document, type, logoDataUrl) => {
-      const { jsPDF } = window.jspdf;
-      const doc = new jsPDF();
-      const isQuote = type === 'quote';
-      const docNumber = isQuote ? document.quoteNumber : document.invoiceNumber;
-      const total = calculateTotal(document.items).toFixed(2);
-      
-      const pageWidth = doc.internal.pageSize.getWidth();
-      const margin = 20;
-      let y = 20;
-      
-      // Header background
-      doc.setFillColor(37, 99, 235);
-      doc.rect(0, 0, pageWidth, 45, 'F');
-      
-      // Logo placeholder (white box)
-      doc.setFillColor(255, 255, 255);
-      doc.roundedRect(margin, 10, 50, 25, 3, 3, 'F');
-      
-      // Try to add logo
-      try {
-        doc.addImage(logoDataUrl, 'PNG', margin + 2, 12, 46, 21);
-      } catch (e) {
-        doc.setFontSize(8);
-        doc.setTextColor(37, 99, 235);
-        doc.text('SEVERN DAMP', margin + 5, 22);
-        doc.text('PROOFING LTD', margin + 5, 28);
+    // PDF Generation using html2pdf - captures the preview element
+    const generatePdf = (docNumber) => {
+      const element = document.getElementById('document-preview');
+      if (!element) {
+        alert('Please view the preview first');
+        return;
       }
       
-      // Company info (right side)
-      doc.setFontSize(10);
-      doc.setTextColor(219, 234, 254);
-      doc.text(COMPANY_INFO.contact, pageWidth - margin, 18, { align: 'right' });
-      doc.text(COMPANY_INFO.phone, pageWidth - margin, 25, { align: 'right' });
-      doc.text(COMPANY_INFO.email, pageWidth - margin, 32, { align: 'right' });
-      
-      y = 55;
-      
-      // Document title
-      doc.setFillColor(249, 250, 251);
-      doc.rect(0, 45, pageWidth, 20, 'F');
-      doc.setFontSize(20);
-      doc.setTextColor(31, 41, 55);
-      doc.text(isQuote ? 'Quotation' : 'Invoice', margin, 58);
-      doc.setFontSize(10);
-      doc.setTextColor(107, 114, 128);
-      doc.text(`Ref: ${docNumber}`, margin, 63);
-      
-      y = 75;
-      
-      // Client details
-      doc.setFontSize(8);
-      doc.setTextColor(107, 114, 128);
-      doc.text(isQuote ? 'QUOTE FOR' : 'INVOICE TO', margin, y);
-      y += 5;
-      doc.setFontSize(11);
-      doc.setTextColor(31, 41, 55);
-      doc.setFont(undefined, 'bold');
-      doc.text(document.client.name, margin, y);
-      doc.setFont(undefined, 'normal');
-      y += 5;
-      doc.setFontSize(10);
-      doc.setTextColor(75, 85, 99);
-      if (document.client.address) { doc.text(document.client.address, margin, y); y += 5; }
-      if (document.client.phone) { doc.text(document.client.phone, margin, y); y += 5; }
-      if (document.client.email) { doc.text(document.client.email, margin, y); y += 5; }
-      
-      y += 5;
-      
-      // Dates row
-      doc.setFillColor(249, 250, 251);
-      doc.rect(0, y - 3, pageWidth, 15, 'F');
-      doc.setFontSize(8);
-      doc.setTextColor(107, 114, 128);
-      doc.text('DATE', margin, y + 2);
-      doc.text(isQuote ? 'VALID UNTIL' : 'DUE DATE', pageWidth / 2, y + 2);
-      doc.setFontSize(10);
-      doc.setTextColor(31, 41, 55);
-      doc.text(formatDate(document.date), margin, y + 8);
-      doc.text(formatDate(isQuote ? document.validUntil : document.dueDate), pageWidth / 2, y + 8);
-      
-      y += 20;
-      
-      // Items table header
-      doc.setFillColor(229, 231, 235);
-      doc.rect(margin, y - 3, pageWidth - (margin * 2), 8, 'F');
-      doc.setFontSize(8);
-      doc.setTextColor(107, 114, 128);
-      doc.text('DESCRIPTION', margin + 2, y + 2);
-      doc.text('QTY', pageWidth - margin - 60, y + 2);
-      doc.text('PRICE', pageWidth - margin - 35, y + 2);
-      doc.text('TOTAL', pageWidth - margin - 10, y + 2, { align: 'right' });
-      
-      y += 10;
-      
-      // Items
-      doc.setFontSize(10);
-      doc.setTextColor(31, 41, 55);
-      document.items.forEach(item => {
-        doc.text(item.description || '-', margin + 2, y);
-        doc.text(String(item.quantity), pageWidth - margin - 55, y);
-        doc.text(`£${item.unitPrice.toFixed(2)}`, pageWidth - margin - 30, y);
-        doc.setFont(undefined, 'bold');
-        doc.text(`£${(item.quantity * item.unitPrice).toFixed(2)}`, pageWidth - margin - 2, y, { align: 'right' });
-        doc.setFont(undefined, 'normal');
-        y += 7;
-        
-        // Draw line
-        doc.setDrawColor(243, 244, 246);
-        doc.line(margin, y - 3, pageWidth - margin, y - 3);
-      });
-      
-      y += 5;
-      
-      // Total
-      doc.setDrawColor(31, 41, 55);
-      doc.setLineWidth(0.5);
-      doc.line(pageWidth - margin - 70, y, pageWidth - margin, y);
-      y += 8;
-      doc.setFontSize(10);
-      doc.setTextColor(107, 114, 128);
-      doc.text('TOTAL', pageWidth - margin - 70, y);
-      doc.setFontSize(16);
-      doc.setTextColor(37, 99, 235);
-      doc.setFont(undefined, 'bold');
-      doc.text(`£${total}`, pageWidth - margin, y, { align: 'right' });
-      doc.setFont(undefined, 'normal');
-      
-      y += 15;
-      
-      // Info sections
-      const addInfoSection = (title, content) => {
-        if (!content) return;
-        if (y > 250) { doc.addPage(); y = 20; }
-        doc.setFillColor(249, 250, 251);
-        doc.roundedRect(margin, y - 3, pageWidth - (margin * 2), 25, 2, 2, 'F');
-        doc.setFontSize(8);
-        doc.setTextColor(107, 114, 128);
-        doc.text(title.toUpperCase(), margin + 5, y + 3);
-        doc.setFontSize(9);
-        doc.setTextColor(55, 65, 81);
-        const lines = doc.splitTextToSize(content, pageWidth - (margin * 2) - 10);
-        doc.text(lines.slice(0, 3), margin + 5, y + 10);
-        y += 30;
+      const opt = {
+        margin: 0,
+        filename: `${docNumber}.pdf`,
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2, useCORS: true, logging: false },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
       };
       
-      addInfoSection('Estimated Timescale', document.timescale);
-      addInfoSection('Significant Exclusions', document.exclusions);
-      addInfoSection('Payment Terms', document.paymentTerms);
-      addInfoSection('Notes', document.notes);
-      
-      // Checkatrade link
-      if (y > 270) { doc.addPage(); y = 20; }
-      doc.setFontSize(9);
-      doc.setTextColor(59, 130, 246);
-      doc.textWithLink('✓ View our reviews on Checkatrade', margin, y, { url: COMPANY_INFO.checkatrade });
-      
-      y += 15;
-      
-      // Footer
-      if (y > 275) { doc.addPage(); y = 270; }
-      doc.setFillColor(243, 244, 246);
-      doc.rect(0, 280, pageWidth, 20, 'F');
-      doc.setFontSize(10);
-      doc.setTextColor(75, 85, 99);
-      doc.text(COMPANY_INFO.name, pageWidth / 2, 287, { align: 'center' });
-      doc.setFontSize(8);
-      doc.setTextColor(107, 114, 128);
-      doc.text(`Company Registration: ${COMPANY_INFO.regNumber}`, pageWidth / 2, 293, { align: 'center' });
-      
-      // Save the PDF
-      doc.save(`${docNumber}.pdf`);
+      html2pdf().set(opt).from(element).save();
     };
 
     // Email function
@@ -361,120 +205,120 @@ Company Registration: ${COMPANY_INFO.regNumber}`
             <button onClick={onBack} className="px-4 py-2 bg-slate-700 text-white rounded-lg">← Back</button>
             {isQuote && <button onClick={onSave} className="px-4 py-2 bg-cyan-500 text-slate-900 rounded-lg font-bold">Save</button>}
             {!isQuote && document.status === 'unpaid' && <button onClick={() => onMarkPaid(document.id)} className="px-4 py-2 bg-green-500 text-white rounded-lg font-bold">Mark Paid</button>}
-            <button onClick={() => generatePdf(document, type, LOGO_DATA_URL)} className="px-4 py-2 bg-blue-500 text-white rounded-lg font-bold">📄 Download PDF</button>
+            <button onClick={() => generatePdf(docNumber)} className="px-4 py-2 bg-blue-500 text-white rounded-lg font-bold">📄 Download PDF</button>
             <button onClick={() => openEmail(document, type)} className="px-4 py-2 bg-green-600 text-white rounded-lg font-bold">✉️ Send Email</button>
           </div>
           
-          <div className="bg-white rounded-xl shadow-2xl max-w-3xl mx-auto overflow-hidden">
-            <div className="bg-gradient-to-r from-blue-600 to-cyan-500 p-6">
+          <div id="document-preview" className="bg-white rounded-xl shadow-2xl max-w-3xl mx-auto overflow-hidden">
+            <div style={{background: 'linear-gradient(to right, #2563eb, #06b6d4)'}} className="p-6">
               <div className="flex justify-between items-start">
                 <div className="bg-white rounded-lg p-2">
                   <img src={LOGO_DATA_URL} alt="Logo" className="h-14 w-auto" />
                 </div>
                 <div className="text-right text-white">
-                  <p className="text-blue-100 font-medium">{COMPANY_INFO.contact}</p>
-                  <p className="text-blue-100">{COMPANY_INFO.phone}</p>
-                  <p className="text-blue-100">{COMPANY_INFO.email}</p>
+                  <p style={{color: '#dbeafe'}} className="font-medium">{COMPANY_INFO.contact}</p>
+                  <p style={{color: '#dbeafe'}}>{COMPANY_INFO.phone}</p>
+                  <p style={{color: '#dbeafe'}}>{COMPANY_INFO.email}</p>
                 </div>
               </div>
             </div>
             
-            <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
-              <h2 className="text-2xl font-bold text-gray-800">{isQuote ? 'Quotation' : 'Invoice'}</h2>
-              <p className="text-gray-600 font-mono">Ref: {docNumber}</p>
+            <div className="px-6 py-4 border-b border-gray-200" style={{backgroundColor: '#f9fafb'}}>
+              <h2 className="text-2xl font-bold" style={{color: '#1f2937'}}>{isQuote ? 'Quotation' : 'Invoice'}</h2>
+              <p style={{color: '#4b5563', fontFamily: 'monospace'}}>Ref: {docNumber}</p>
             </div>
             
             <div className="px-6 py-4 border-b border-gray-200">
-              <p className="text-xs text-gray-500 uppercase font-semibold mb-1">{isQuote ? 'Quote For' : 'Invoice To'}</p>
-              <p className="font-semibold text-gray-800">{document.client.name}</p>
-              {document.client.address && <p className="text-gray-600">{document.client.address}</p>}
-              {document.client.phone && <p className="text-gray-600">{document.client.phone}</p>}
-              {document.client.email && <p className="text-gray-600">{document.client.email}</p>}
+              <p className="text-xs uppercase font-semibold mb-1" style={{color: '#6b7280'}}>{isQuote ? 'Quote For' : 'Invoice To'}</p>
+              <p className="font-semibold" style={{color: '#1f2937'}}>{document.client.name}</p>
+              {document.client.address && <p style={{color: '#4b5563'}}>{document.client.address}</p>}
+              {document.client.phone && <p style={{color: '#4b5563'}}>{document.client.phone}</p>}
+              {document.client.email && <p style={{color: '#4b5563'}}>{document.client.email}</p>}
             </div>
             
-            <div className="px-6 py-3 grid grid-cols-2 gap-4 border-b border-gray-200 bg-gray-50">
+            <div className="px-6 py-3 grid grid-cols-2 gap-4 border-b border-gray-200" style={{backgroundColor: '#f9fafb'}}>
               <div>
-                <p className="text-xs text-gray-500 uppercase">Date</p>
-                <p className="text-gray-800">{formatDate(document.date)}</p>
+                <p className="text-xs uppercase" style={{color: '#6b7280'}}>Date</p>
+                <p style={{color: '#1f2937'}}>{formatDate(document.date)}</p>
               </div>
               <div>
-                <p className="text-xs text-gray-500 uppercase">{isQuote ? 'Valid Until' : 'Due Date'}</p>
-                <p className="text-gray-800">{formatDate(isQuote ? document.validUntil : document.dueDate)}</p>
+                <p className="text-xs uppercase" style={{color: '#6b7280'}}>{isQuote ? 'Valid Until' : 'Due Date'}</p>
+                <p style={{color: '#1f2937'}}>{formatDate(isQuote ? document.validUntil : document.dueDate)}</p>
               </div>
             </div>
             
             <div className="p-6">
               <table className="w-full">
                 <thead>
-                  <tr className="border-b-2 border-gray-200">
-                    <th className="text-left py-2 text-xs text-gray-500 uppercase">Description</th>
-                    <th className="text-center py-2 text-xs text-gray-500 uppercase w-16">Qty</th>
-                    <th className="text-right py-2 text-xs text-gray-500 uppercase w-20">Price</th>
-                    <th className="text-right py-2 text-xs text-gray-500 uppercase w-20">Total</th>
+                  <tr style={{borderBottom: '2px solid #e5e7eb'}}>
+                    <th className="text-left py-2 text-xs uppercase" style={{color: '#6b7280'}}>Description</th>
+                    <th className="text-center py-2 text-xs uppercase w-16" style={{color: '#6b7280'}}>Qty</th>
+                    <th className="text-right py-2 text-xs uppercase w-20" style={{color: '#6b7280'}}>Price</th>
+                    <th className="text-right py-2 text-xs uppercase w-20" style={{color: '#6b7280'}}>Total</th>
                   </tr>
                 </thead>
                 <tbody>
                   {document.items.map((item, index) => (
-                    <tr key={index} className="border-b border-gray-100">
-                      <td className="py-2 text-gray-800">{item.description || '-'}</td>
-                      <td className="py-2 text-center text-gray-600">{item.quantity}</td>
-                      <td className="py-2 text-right text-gray-600">£{item.unitPrice.toFixed(2)}</td>
-                      <td className="py-2 text-right text-gray-800 font-medium">£{(item.quantity * item.unitPrice).toFixed(2)}</td>
+                    <tr key={index} style={{borderBottom: '1px solid #f3f4f6'}}>
+                      <td className="py-2" style={{color: '#1f2937'}}>{item.description || '-'}</td>
+                      <td className="py-2 text-center" style={{color: '#4b5563'}}>{item.quantity}</td>
+                      <td className="py-2 text-right" style={{color: '#4b5563'}}>£{item.unitPrice.toFixed(2)}</td>
+                      <td className="py-2 text-right font-medium" style={{color: '#1f2937'}}>£{(item.quantity * item.unitPrice).toFixed(2)}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
-              <div className="mt-4 pt-4 border-t-2 border-gray-800 flex justify-end">
+              <div className="mt-4 pt-4 flex justify-end" style={{borderTop: '2px solid #1f2937'}}>
                 <div className="text-right">
-                  <span className="text-gray-600 mr-4">TOTAL</span>
-                  <span className="text-2xl font-bold text-blue-600">£{calculateTotal(document.items).toFixed(2)}</span>
+                  <span style={{color: '#4b5563'}} className="mr-4">TOTAL</span>
+                  <span className="text-2xl font-bold" style={{color: '#2563eb'}}>£{calculateTotal(document.items).toFixed(2)}</span>
                 </div>
               </div>
             </div>
             
             {document.timescale && (
               <div className="px-6 pb-4">
-                <div className="bg-gray-50 rounded-lg p-3">
-                  <p className="text-xs text-gray-500 uppercase mb-1">Estimated Timescale</p>
-                  <p className="text-gray-700 text-sm whitespace-pre-line">{document.timescale}</p>
+                <div className="rounded-lg p-3" style={{backgroundColor: '#f9fafb'}}>
+                  <p className="text-xs uppercase mb-1" style={{color: '#6b7280'}}>Estimated Timescale</p>
+                  <p className="text-sm whitespace-pre-line" style={{color: '#374151'}}>{document.timescale}</p>
                 </div>
               </div>
             )}
             
             {document.exclusions && (
               <div className="px-6 pb-4">
-                <div className="bg-gray-50 rounded-lg p-3">
-                  <p className="text-xs text-gray-500 uppercase mb-1">Significant Exclusions</p>
-                  <p className="text-gray-700 text-sm whitespace-pre-line">{document.exclusions}</p>
+                <div className="rounded-lg p-3" style={{backgroundColor: '#f9fafb'}}>
+                  <p className="text-xs uppercase mb-1" style={{color: '#6b7280'}}>Significant Exclusions</p>
+                  <p className="text-sm whitespace-pre-line" style={{color: '#374151'}}>{document.exclusions}</p>
                 </div>
               </div>
             )}
             
             {document.paymentTerms && (
               <div className="px-6 pb-4">
-                <div className="bg-gray-50 rounded-lg p-3">
-                  <p className="text-xs text-gray-500 uppercase mb-1">Payment Terms</p>
-                  <p className="text-gray-700 text-sm whitespace-pre-line">{document.paymentTerms}</p>
+                <div className="rounded-lg p-3" style={{backgroundColor: '#f9fafb'}}>
+                  <p className="text-xs uppercase mb-1" style={{color: '#6b7280'}}>Payment Terms</p>
+                  <p className="text-sm whitespace-pre-line" style={{color: '#374151'}}>{document.paymentTerms}</p>
                 </div>
               </div>
             )}
             
             {document.notes && (
               <div className="px-6 pb-4">
-                <div className="bg-gray-50 rounded-lg p-3">
-                  <p className="text-xs text-gray-500 uppercase mb-1">Notes</p>
-                  <p className="text-gray-700 text-sm whitespace-pre-line">{document.notes}</p>
+                <div className="rounded-lg p-3" style={{backgroundColor: '#f9fafb'}}>
+                  <p className="text-xs uppercase mb-1" style={{color: '#6b7280'}}>Notes</p>
+                  <p className="text-sm whitespace-pre-line" style={{color: '#374151'}}>{document.notes}</p>
                 </div>
               </div>
             )}
             
             <div className="px-6 pb-4">
-              <a href={COMPANY_INFO.checkatrade} target="_blank" rel="noopener noreferrer" className="text-blue-500 text-sm">✓ View our reviews on Checkatrade</a>
+              <a href={COMPANY_INFO.checkatrade} target="_blank" rel="noopener noreferrer" className="text-sm" style={{color: '#3b82f6'}}>✓ View our reviews on Checkatrade</a>
             </div>
             
-            <div className="bg-gray-100 px-6 py-3 text-center border-t">
-              <p className="text-sm text-gray-600">{COMPANY_INFO.name}</p>
-              <p className="text-xs text-gray-500">Company Registration: {COMPANY_INFO.regNumber}</p>
+            <div className="px-6 py-3 text-center border-t" style={{backgroundColor: '#f3f4f6'}}>
+              <p className="text-sm" style={{color: '#4b5563'}}>{COMPANY_INFO.name}</p>
+              <p className="text-xs" style={{color: '#6b7280'}}>Company Registration: {COMPANY_INFO.regNumber}</p>
             </div>
           </div>
         </div>
