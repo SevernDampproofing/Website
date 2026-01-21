@@ -74,7 +74,7 @@
     const generateId = () => Date.now().toString(36) + Math.random().toString(36).substr(2);
     const calculateTotal = (items) => items.reduce((sum, item) => sum + (item.quantity * item.unitPrice), 0);
 
-    // PDF Generation function
+    // PDF Generation and Email function
     const generatePdfAndEmail = (document, type, logoDataUrl) => {
       const isQuote = type === 'quote';
       const docNumber = isQuote ? document.quoteNumber : document.invoiceNumber;
@@ -226,6 +226,7 @@
 </body>
 </html>`;
 
+      // Open print window
       const printWindow = window.open('', '_blank');
       printWindow.document.write(printHtml);
       printWindow.document.close();
@@ -235,6 +236,29 @@
           printWindow.print();
         }, 250);
       };
+      
+      // Also open email with pre-filled content
+      const subject = encodeURIComponent(`${isQuote ? 'Quotation' : 'Invoice'} ${docNumber} from Severn Damp Proofing Ltd`);
+      const body = encodeURIComponent(
+`Dear ${document.client.name},
+
+Please find attached your ${isQuote ? 'quotation' : 'invoice'} from Severn Damp Proofing Ltd.
+
+View our reviews on Checkatrade: ${COMPANY_INFO.checkatrade}
+
+Kind regards,
+${COMPANY_INFO.contact}
+${COMPANY_INFO.name}
+Tel: ${COMPANY_INFO.phone}
+Company Registration: ${COMPANY_INFO.regNumber}`
+      );
+      
+      const mailtoLink = `mailto:${document.client.email || ''}?subject=${subject}&body=${body}`;
+      
+      // Small delay to let print window open first
+      setTimeout(() => {
+        window.location.href = mailtoLink;
+      }, 500);
     };
 
     // Dictation Button Component
