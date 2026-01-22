@@ -283,7 +283,7 @@ Company Registration: ${COMPANY_INFO.regNumber}`
                 <>
                   <p className="text-xs uppercase mb-2" style={{color: '#6b7280'}}>Works Description</p>
                   {document.items.map((item, index) => (
-                    item.description && <p key={index} className="py-1" style={{color: '#1f2937'}}>• {item.description}</p>
+                    item.description && <p key={index} className="py-1 whitespace-pre-line" style={{color: '#1f2937'}}>{item.description}</p>
                   ))}
                 </>
               )}
