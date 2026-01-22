@@ -6,6 +6,8 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="theme-color" content="#0f172a">
+  <link rel="icon" type="image/png" href="favicon.png">
+  <link rel="apple-touch-icon" href="favicon.png">
   <title>Severn Damp Proofing</title>
   <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
@@ -57,9 +59,9 @@
 
     const COMPANY_INFO = {
       name: 'Severn Damp Proofing Ltd',
-      contact: 'Jon Wilson',
+      contact: 'Jonathan Wilson',
       phone: '07980 222830',
-      email: 'wilsonbuilders@icloud.com',
+      email: 'severndampproofing@icloud.com',
       checkatrade: 'https://www.checkatrade.com/trades/severndampproofingltd',
       regNumber: '10994578'
     };
@@ -68,6 +70,10 @@
       if (!dateStr) return '';
       const [year, month, day] = dateStr.split('-');
       return `${day}/${month}/${year}`;
+    };
+
+    const formatCurrency = (amount) => {
+      return amount.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     };
 
     const saveData = (key, data) => {
@@ -114,8 +120,11 @@ Please find attached your ${isQuote ? 'quotation' : 'invoice'} from Severn Damp 
 View our reviews on Checkatrade: ${COMPANY_INFO.checkatrade}
 
 Kind regards,
+
 ${COMPANY_INFO.contact}
+
 ${COMPANY_INFO.name}
+Zion Hill Cottage, Lower Street, Ruscombe, Stroud. GL6 6BZ
 Tel: ${COMPANY_INFO.phone}
 Company Registration: ${COMPANY_INFO.regNumber}`
       );
@@ -205,7 +214,7 @@ Company Registration: ${COMPANY_INFO.regNumber}`
       const isQuote = type === 'quote';
       const docNumber = isQuote ? document.quoteNumber : document.invoiceNumber;
       const showItemisedPricing = document.itemisedPricing !== false;
-      const total = showItemisedPricing ? calculateTotal(document.items).toFixed(2) : (document.grandTotal || 0).toFixed(2);
+      const total = showItemisedPricing ? formatCurrency(calculateTotal(document.items)) : formatCurrency(document.grandTotal || 0);
       
       return (
         <div className="p-6">
@@ -272,8 +281,8 @@ Company Registration: ${COMPANY_INFO.regNumber}`
                         <tr key={index} style={{borderBottom: '1px solid #f3f4f6'}}>
                           <td className="py-2" style={{color: '#1f2937'}}>{item.description || '-'}</td>
                           <td className="py-2 text-center" style={{color: '#4b5563'}}>{item.quantity}</td>
-                          <td className="py-2 text-right" style={{color: '#4b5563'}}>£{item.unitPrice.toFixed(2)}</td>
-                          <td className="py-2 text-right font-medium" style={{color: '#1f2937'}}>£{(item.quantity * item.unitPrice).toFixed(2)}</td>
+                          <td className="py-2 text-right" style={{color: '#4b5563'}}>£{formatCurrency(item.unitPrice)}</td>
+                          <td className="py-2 text-right font-medium" style={{color: '#1f2937'}}>£{formatCurrency(item.quantity * item.unitPrice)}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -357,6 +366,7 @@ Company Registration: ${COMPANY_INFO.regNumber}`
       
       const [defaultExclusions, setDefaultExclusions] = useState('');
       const [defaultPaymentTerms, setDefaultPaymentTerms] = useState('');
+      const [defaultNotes, setDefaultNotes] = useState('');
 
       useEffect(() => {
         const savedQuotes = loadData('severn-quotes');
@@ -364,11 +374,13 @@ Company Registration: ${COMPANY_INFO.regNumber}`
         const savedClients = loadData('severn-clients');
         const savedExclusions = loadData('severn-default-exclusions');
         const savedPaymentTerms = loadData('severn-default-payment-terms');
+        const savedNotes = loadData('severn-default-notes');
         if (savedQuotes) setQuotes(savedQuotes);
         if (savedInvoices) setInvoices(savedInvoices);
         if (savedClients) setClients(savedClients);
         if (savedExclusions) setDefaultExclusions(savedExclusions);
         if (savedPaymentTerms) setDefaultPaymentTerms(savedPaymentTerms);
+        if (savedNotes) setDefaultNotes(savedNotes);
         setLoading(false);
       }, []);
 
@@ -379,8 +391,9 @@ Company Registration: ${COMPANY_INFO.regNumber}`
           saveData('severn-clients', clients);
           saveData('severn-default-exclusions', defaultExclusions);
           saveData('severn-default-payment-terms', defaultPaymentTerms);
+          saveData('severn-default-notes', defaultNotes);
         }
-      }, [quotes, invoices, clients, defaultExclusions, defaultPaymentTerms, loading]);
+      }, [quotes, invoices, clients, defaultExclusions, defaultPaymentTerms, defaultNotes, loading]);
 
       const createQuote = () => {
         const newQuote = {
@@ -395,7 +408,7 @@ Company Registration: ${COMPANY_INFO.regNumber}`
           timescale: '',
           exclusions: defaultExclusions,
           paymentTerms: defaultPaymentTerms,
-          notes: '',
+          notes: defaultNotes,
           status: 'draft'
         };
         setCurrentQuote(newQuote);
@@ -423,6 +436,7 @@ Company Registration: ${COMPANY_INFO.regNumber}`
         
         if (currentQuote.exclusions !== defaultExclusions) setDefaultExclusions(currentQuote.exclusions);
         if (currentQuote.paymentTerms !== defaultPaymentTerms) setDefaultPaymentTerms(currentQuote.paymentTerms);
+        if (currentQuote.notes !== defaultNotes) setDefaultNotes(currentQuote.notes);
         
         const existingClient = clients.find(c => c.name.toLowerCase() === currentQuote.client.name.toLowerCase());
         if (!existingClient && currentQuote.client.name) {
@@ -699,7 +713,7 @@ Company Registration: ${COMPANY_INFO.regNumber}`
                       <button onClick={addItem} className="text-cyan-400 text-sm">+ Add Item</button>
                       <div className="pt-4 border-t border-slate-700">
                         <label className="text-slate-400 text-sm">Grand Total (£)</label>
-                        <input type="number" value={currentQuote.grandTotal} onChange={(e) => updateQuoteField('grandTotal', parseFloat(e.target.value) || 0)} className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-xl font-bold mt-1" min="0" step="0.01" placeholder="0.00" />
+                        <input type="number" value={currentQuote.grandTotal || ''} onChange={(e) => updateQuoteField('grandTotal', parseFloat(e.target.value) || 0)} className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-xl font-bold mt-1" min="0" step="0.01" placeholder="0.00" />
                       </div>
                     </>
                   )}
@@ -741,7 +755,10 @@ Company Registration: ${COMPANY_INFO.regNumber}`
                 </div>
                 
                 <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-5">
-                  <h3 className="text-lg font-semibold text-white mb-2">Notes</h3>
+                  <div className="flex justify-between items-center mb-2">
+                    <h3 className="text-lg font-semibold text-white">Notes</h3>
+                    <span className="text-xs text-slate-500">Saved as default</span>
+                  </div>
                   <div className="relative">
                     <textarea value={currentQuote.notes} onChange={(e) => updateQuoteField('notes', e.target.value)} className="w-full px-4 py-3 pr-14 bg-slate-700 border border-slate-600 rounded-lg text-white resize-none" rows={3} placeholder="Additional notes..." />
                     <DictationButton onTranscript={(text) => updateQuoteField('notes', currentQuote.notes ? currentQuote.notes + ' ' + text : text)} />
