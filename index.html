@@ -6,9 +6,6 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="theme-color" content="#0f172a">
-  <link rel="icon" href="newlogo.png" type="image/png">
-  <link rel="apple-touch-icon" href="newlogo.png">
-  <meta name="application-name" content="Jons Quotes">
   <title>Severn Damp Proofing</title>
   <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
@@ -40,6 +37,12 @@
     }
     #root { display: none; }
     #root.show { display: block; }
+    .toggle-switch { position: relative; width: 48px; height: 26px; }
+    .toggle-switch input { opacity: 0; width: 0; height: 0; }
+    .toggle-slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #475569; border-radius: 26px; transition: 0.3s; }
+    .toggle-slider:before { position: absolute; content: ""; height: 20px; width: 20px; left: 3px; bottom: 3px; background-color: white; border-radius: 50%; transition: 0.3s; }
+    .toggle-switch input:checked + .toggle-slider { background-color: #06b6d4; }
+    .toggle-switch input:checked + .toggle-slider:before { transform: translateX(22px); }
   </style>
 </head>
 <body>
@@ -78,7 +81,7 @@
     const generateId = () => Date.now().toString(36) + Math.random().toString(36).substr(2);
     const calculateTotal = (items) => items.reduce((sum, item) => sum + (item.quantity * item.unitPrice), 0);
 
-    // PDF Generation using html2pdf - captures the preview element
+    // PDF Generation using html2pdf
     const generatePdf = (docNumber) => {
       const element = document.getElementById('document-preview');
       if (!element) {
@@ -201,6 +204,8 @@ Company Registration: ${COMPANY_INFO.regNumber}`
     const DocumentPreview = ({ document, type, onBack, onSave, onMarkPaid }) => {
       const isQuote = type === 'quote';
       const docNumber = isQuote ? document.quoteNumber : document.invoiceNumber;
+      const showItemisedPricing = document.itemisedPricing !== false;
+      const total = showItemisedPricing ? calculateTotal(document.items).toFixed(2) : (document.grandTotal || 0).toFixed(2);
       
       return (
         <div className="p-6">
@@ -251,30 +256,41 @@ Company Registration: ${COMPANY_INFO.regNumber}`
             </div>
             
             <div className="p-6">
-              <table className="w-full">
-                <thead>
-                  <tr style={{borderBottom: '2px solid #e5e7eb'}}>
-                    <th className="text-left py-2 text-xs uppercase" style={{color: '#6b7280'}}>Description</th>
-                    <th className="text-center py-2 text-xs uppercase w-16" style={{color: '#6b7280'}}>Qty</th>
-                    <th className="text-right py-2 text-xs uppercase w-20" style={{color: '#6b7280'}}>Price</th>
-                    <th className="text-right py-2 text-xs uppercase w-20" style={{color: '#6b7280'}}>Total</th>
-                  </tr>
-                </thead>
-                <tbody>
+              {showItemisedPricing ? (
+                <>
+                  <table className="w-full">
+                    <thead>
+                      <tr style={{borderBottom: '2px solid #e5e7eb'}}>
+                        <th className="text-left py-2 text-xs uppercase" style={{color: '#6b7280'}}>Description</th>
+                        <th className="text-center py-2 text-xs uppercase w-16" style={{color: '#6b7280'}}>Qty</th>
+                        <th className="text-right py-2 text-xs uppercase w-20" style={{color: '#6b7280'}}>Price</th>
+                        <th className="text-right py-2 text-xs uppercase w-20" style={{color: '#6b7280'}}>Total</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {document.items.map((item, index) => (
+                        <tr key={index} style={{borderBottom: '1px solid #f3f4f6'}}>
+                          <td className="py-2" style={{color: '#1f2937'}}>{item.description || '-'}</td>
+                          <td className="py-2 text-center" style={{color: '#4b5563'}}>{item.quantity}</td>
+                          <td className="py-2 text-right" style={{color: '#4b5563'}}>£{item.unitPrice.toFixed(2)}</td>
+                          <td className="py-2 text-right font-medium" style={{color: '#1f2937'}}>£{(item.quantity * item.unitPrice).toFixed(2)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </>
+              ) : (
+                <>
+                  <p className="text-xs uppercase mb-2" style={{color: '#6b7280'}}>Works Description</p>
                   {document.items.map((item, index) => (
-                    <tr key={index} style={{borderBottom: '1px solid #f3f4f6'}}>
-                      <td className="py-2" style={{color: '#1f2937'}}>{item.description || '-'}</td>
-                      <td className="py-2 text-center" style={{color: '#4b5563'}}>{item.quantity}</td>
-                      <td className="py-2 text-right" style={{color: '#4b5563'}}>£{item.unitPrice.toFixed(2)}</td>
-                      <td className="py-2 text-right font-medium" style={{color: '#1f2937'}}>£{(item.quantity * item.unitPrice).toFixed(2)}</td>
-                    </tr>
+                    item.description && <p key={index} className="py-1" style={{color: '#1f2937'}}>• {item.description}</p>
                   ))}
-                </tbody>
-              </table>
+                </>
+              )}
               <div className="mt-4 pt-4 flex justify-end" style={{borderTop: '2px solid #1f2937'}}>
                 <div className="text-right">
                   <span style={{color: '#4b5563'}} className="mr-4">TOTAL</span>
-                  <span className="text-2xl font-bold" style={{color: '#2563eb'}}>£{calculateTotal(document.items).toFixed(2)}</span>
+                  <span className="text-2xl font-bold" style={{color: '#2563eb'}}>£{total}</span>
                 </div>
               </div>
             </div>
@@ -374,6 +390,8 @@ Company Registration: ${COMPANY_INFO.regNumber}`
           validUntil: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
           client: { name: '', phone: '', address: '', email: '' },
           items: [{ description: '', quantity: 1, unitPrice: 0 }],
+          itemisedPricing: true,
+          grandTotal: 0,
           timescale: '',
           exclusions: defaultExclusions,
           paymentTerms: defaultPaymentTerms,
@@ -385,7 +403,13 @@ Company Registration: ${COMPANY_INFO.regNumber}`
       };
 
       const editQuote = (quote) => {
-        setCurrentQuote({ ...quote });
+        // Ensure old quotes have the new fields
+        const updatedQuote = {
+          ...quote,
+          itemisedPricing: quote.itemisedPricing !== false,
+          grandTotal: quote.grandTotal || calculateTotal(quote.items)
+        };
+        setCurrentQuote(updatedQuote);
         setView('editQuote');
       };
 
@@ -423,6 +447,8 @@ Company Registration: ${COMPANY_INFO.regNumber}`
           dueDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
           client: { ...quote.client },
           items: [...quote.items],
+          itemisedPricing: quote.itemisedPricing,
+          grandTotal: quote.grandTotal,
           timescale: quote.timescale,
           exclusions: quote.exclusions,
           paymentTerms: quote.paymentTerms,
@@ -482,6 +508,14 @@ Company Registration: ${COMPANY_INFO.regNumber}`
         const client = clients.find(c => c.id === clientId);
         if (client) setCurrentQuote(prev => ({ ...prev, client: { ...client } }));
       };
+      
+      const getDisplayTotal = () => {
+        if (!currentQuote) return '0.00';
+        if (currentQuote.itemisedPricing) {
+          return calculateTotal(currentQuote.items).toFixed(2);
+        }
+        return (currentQuote.grandTotal || 0).toFixed(2);
+      };
 
       if (loading) {
         return (
@@ -514,7 +548,7 @@ Company Registration: ${COMPANY_INFO.regNumber}`
                               <p className="text-white font-medium">{q.client.name}</p>
                               <p className="text-slate-400 text-xs">{q.quoteNumber} • {formatDate(q.date)}</p>
                             </div>
-                            <p className="text-cyan-400 font-bold">£{calculateTotal(q.items).toFixed(2)}</p>
+                            <p className="text-cyan-400 font-bold">£{q.itemisedPricing !== false ? calculateTotal(q.items).toFixed(2) : (q.grandTotal || 0).toFixed(2)}</p>
                           </div>
                         ))}
                       </div>
@@ -530,7 +564,7 @@ Company Registration: ${COMPANY_INFO.regNumber}`
                               <p className="text-white font-medium">{inv.client.name}</p>
                               <p className="text-slate-400 text-xs">{inv.invoiceNumber} • Due: {formatDate(inv.dueDate)}</p>
                             </div>
-                            <p className="text-red-400 font-bold">£{calculateTotal(inv.items).toFixed(2)}</p>
+                            <p className="text-red-400 font-bold">£{inv.itemisedPricing !== false ? calculateTotal(inv.items).toFixed(2) : (inv.grandTotal || 0).toFixed(2)}</p>
                           </div>
                         ))}
                       </div>
@@ -570,7 +604,7 @@ Company Registration: ${COMPANY_INFO.regNumber}`
                             <p className="text-slate-500 text-xs">{formatDate(quote.date)}</p>
                           </div>
                           <div className="text-right">
-                            <p className="text-xl font-bold text-cyan-400">£{calculateTotal(quote.items).toFixed(2)}</p>
+                            <p className="text-xl font-bold text-cyan-400">£{quote.itemisedPricing !== false ? calculateTotal(quote.items).toFixed(2) : (quote.grandTotal || 0).toFixed(2)}</p>
                             <div className="flex gap-2 mt-2">
                               <button onClick={() => editQuote(quote)} className="px-3 py-1 text-sm bg-slate-700 text-white rounded">Edit</button>
                               {quote.status !== 'converted' && <button onClick={() => convertToInvoice(quote)} className="px-3 py-1 text-sm bg-green-600 text-white rounded">Invoice</button>}
@@ -630,20 +664,49 @@ Company Registration: ${COMPANY_INFO.regNumber}`
                 </div>
                 
                 <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-5 space-y-4">
-                  <h3 className="text-lg font-semibold text-white">Items</h3>
-                  {currentQuote.items.map((item, index) => (
-                    <div key={index} className="grid grid-cols-12 gap-2 items-center">
-                      <input type="text" placeholder="Description" value={item.description} onChange={(e) => updateItem(index, 'description', e.target.value)} className="col-span-6 px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm" />
-                      <input type="number" placeholder="Qty" value={item.quantity} onChange={(e) => updateItem(index, 'quantity', e.target.value)} className="col-span-2 px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm" min="1" />
-                      <input type="number" placeholder="Price" value={item.unitPrice} onChange={(e) => updateItem(index, 'unitPrice', e.target.value)} className="col-span-2 px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm" min="0" step="0.01" />
-                      <span className="col-span-1 text-cyan-400 text-sm text-right">£{(item.quantity * item.unitPrice).toFixed(2)}</span>
-                      <button onClick={() => removeItem(index)} className="col-span-1 text-red-400 text-sm">✕</button>
+                  <div className="flex justify-between items-center">
+                    <h3 className="text-lg font-semibold text-white">Items & Pricing</h3>
+                    <div className="flex items-center gap-3">
+                      <span className="text-slate-400 text-sm">Itemised pricing</span>
+                      <label className="toggle-switch">
+                        <input type="checkbox" checked={currentQuote.itemisedPricing} onChange={(e) => updateQuoteField('itemisedPricing', e.target.checked)} />
+                        <span className="toggle-slider"></span>
+                      </label>
                     </div>
-                  ))}
-                  <button onClick={addItem} className="text-cyan-400 text-sm">+ Add Item</button>
+                  </div>
+                  
+                  {currentQuote.itemisedPricing ? (
+                    <>
+                      {currentQuote.items.map((item, index) => (
+                        <div key={index} className="grid grid-cols-12 gap-2 items-center">
+                          <input type="text" placeholder="Description" value={item.description} onChange={(e) => updateItem(index, 'description', e.target.value)} className="col-span-6 px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm" />
+                          <input type="number" placeholder="Qty" value={item.quantity} onChange={(e) => updateItem(index, 'quantity', e.target.value)} className="col-span-2 px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm" min="1" />
+                          <input type="number" placeholder="Price" value={item.unitPrice} onChange={(e) => updateItem(index, 'unitPrice', e.target.value)} className="col-span-2 px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm" min="0" step="0.01" />
+                          <span className="col-span-1 text-cyan-400 text-sm text-right">£{(item.quantity * item.unitPrice).toFixed(2)}</span>
+                          <button onClick={() => removeItem(index)} className="col-span-1 text-red-400 text-sm">✕</button>
+                        </div>
+                      ))}
+                      <button onClick={addItem} className="text-cyan-400 text-sm">+ Add Item</button>
+                    </>
+                  ) : (
+                    <>
+                      {currentQuote.items.map((item, index) => (
+                        <div key={index} className="flex gap-2 items-center">
+                          <input type="text" placeholder="Description" value={item.description} onChange={(e) => updateItem(index, 'description', e.target.value)} className="flex-1 px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm" />
+                          <button onClick={() => removeItem(index)} className="text-red-400 text-sm px-2">✕</button>
+                        </div>
+                      ))}
+                      <button onClick={addItem} className="text-cyan-400 text-sm">+ Add Item</button>
+                      <div className="pt-4 border-t border-slate-700">
+                        <label className="text-slate-400 text-sm">Grand Total (£)</label>
+                        <input type="number" value={currentQuote.grandTotal} onChange={(e) => updateQuoteField('grandTotal', parseFloat(e.target.value) || 0)} className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-xl font-bold mt-1" min="0" step="0.01" placeholder="0.00" />
+                      </div>
+                    </>
+                  )}
+                  
                   <div className="pt-4 border-t border-slate-700 text-right">
                     <span className="text-slate-400">Total: </span>
-                    <span className="text-2xl font-bold text-cyan-400">£{calculateTotal(currentQuote.items).toFixed(2)}</span>
+                    <span className="text-2xl font-bold text-cyan-400">£{getDisplayTotal()}</span>
                   </div>
                 </div>
                 
@@ -720,7 +783,7 @@ Company Registration: ${COMPANY_INFO.regNumber}`
                             <p className="text-slate-500 text-xs">Due: {formatDate(invoice.dueDate)}</p>
                           </div>
                           <div className="text-right">
-                            <p className={`text-xl font-bold ${invoice.status === 'paid' ? 'text-green-400' : 'text-red-400'}`}>£{calculateTotal(invoice.items).toFixed(2)}</p>
+                            <p className={`text-xl font-bold ${invoice.status === 'paid' ? 'text-green-400' : 'text-red-400'}`}>£{invoice.itemisedPricing !== false ? calculateTotal(invoice.items).toFixed(2) : (invoice.grandTotal || 0).toFixed(2)}</p>
                             <div className="flex gap-2 mt-2">
                               <button onClick={() => { setCurrentInvoice(invoice); setView('viewInvoice'); }} className="px-3 py-1 text-sm bg-slate-700 text-white rounded">View</button>
                               {invoice.status === 'unpaid' && <button onClick={() => markInvoicePaid(invoice.id)} className="px-3 py-1 text-sm bg-green-600 text-white rounded">Paid</button>}
