@@ -415,6 +415,40 @@ Company Registration: ${COMPANY_INFO.regNumber}`
         setView('editQuote');
       };
 
+      const createLimeQuote = () => {
+        const limeItems = [
+          { description: 'Lime plastering to the following room(s):', quantity: 1, unitPrice: 0 },
+          { description: '1. Remove plaster back to stone on all four walls to ceiling height', quantity: 1, unitPrice: 0 },
+          { description: '2. Four coat lime render system', quantity: 1, unitPrice: 0 },
+          { description: '* Dubbing out coat', quantity: 1, unitPrice: 0 },
+          { description: '* Base coat (scratch coat)', quantity: 1, unitPrice: 0 },
+          { description: '* Top coat', quantity: 1, unitPrice: 0 },
+          { description: '* Finish coat', quantity: 1, unitPrice: 0 },
+          { description: '3. Skip or waste carrier to be supplied by me', quantity: 1, unitPrice: 0 },
+          { description: '4. All labour and materials', quantity: 1, unitPrice: 0 }
+        ];
+
+        const limeNotes = `A lime render allows the walls to wick moisture, this will in places of high moisture (below ground) cause patches to come through. Lime can take up to 3 months before painting (I will supply a dehumidifier)  The walls will need the be painted in limewash (There is a very good local supplier of natural paints)  All furniture/ fixtures must be removed by the client  Please be aware you should allow for extra costs due to the nature and age of the building, any extras would be discussed with the client, agreed on via email before commencement of work`;
+
+        const newQuote = {
+          id: generateId(),
+          quoteNumber: `QT-${String(quotes.length + 1).padStart(4, '0')}`,
+          date: new Date().toISOString().split('T')[0],
+          validUntil: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+          client: { name: '', phone: '', address: '', email: '' },
+          items: limeItems,
+          itemisedPricing: false,
+          grandTotal: 0,
+          timescale: '',
+          exclusions: defaultExclusions,
+          paymentTerms: defaultPaymentTerms,
+          notes: limeNotes,
+          status: 'draft'
+        };
+        setCurrentQuote(newQuote);
+        setView('editQuote');
+      };
+
       const editQuote = (quote) => {
         // Ensure old quotes have the new fields
         const updatedQuote = {
@@ -586,6 +620,7 @@ Company Registration: ${COMPANY_INFO.regNumber}`
                   </div>
                 </div>
                 <button onClick={createQuote} className="px-6 py-3 bg-cyan-500 text-slate-900 rounded-lg font-bold hover:bg-cyan-400 transition-colors">+ New Quote</button>
+                <button onClick={createLimeQuote} className="px-6 py-3 bg-emerald-600 text-white rounded-lg font-bold hover:bg-emerald-500 transition-colors">🧱 Lime Template</button>
               </div>
             )}
 
@@ -602,6 +637,7 @@ Company Registration: ${COMPANY_INFO.regNumber}`
                       <option value="converted">Converted</option>
                     </select>
                     <button onClick={createQuote} className="px-4 py-2 bg-cyan-500 text-slate-900 rounded-lg font-medium">+ New</button>
+                    <button onClick={createLimeQuote} className="px-4 py-2 bg-emerald-600 text-white rounded-lg font-medium">🧱 Lime</button>
                   </div>
                 </div>
                 {filteredQuotes.length === 0 ? <p className="text-slate-400 text-center py-12">No quotes found</p> : (
