@@ -316,7 +316,7 @@ Company Registration: ${COMPANY_INFO.regNumber}`
             {document.exclusions && (
               <div className="px-6 pb-4">
                 <div className="rounded-lg p-3" style={{backgroundColor: '#f9fafb'}}>
-                  <p className="text-xs uppercase mb-1" style={{color: '#6b7280'}}>Significant Exclusions</p>
+                  <p className="text-xs uppercase mb-1" style={{color: '#6b7280'}}>Exclusions</p>
                   <p className="text-sm whitespace-pre-line" style={{color: '#374151'}}>{document.exclusions}</p>
                 </div>
               </div>
@@ -440,8 +440,8 @@ Company Registration: ${COMPANY_INFO.regNumber}`
           itemisedPricing: false,
           grandTotal: 0,
           timescale: '',
-          exclusions: defaultExclusions,
-          paymentTerms: defaultPaymentTerms,
+          exclusions: 'Electrics, Plumbing, Carpentry and Decoration',
+          paymentTerms: '15% deposit due 7 days prior to commencement of works',
           notes: limeNotes,
           status: 'draft'
         };
@@ -770,7 +770,7 @@ Company Registration: ${COMPANY_INFO.regNumber}`
                 
                 <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-5 space-y-4">
                   <div className="flex justify-between items-center">
-                    <h3 className="text-lg font-semibold text-white">Significant Exclusions</h3>
+                    <h3 className="text-lg font-semibold text-white">Exclusions</h3>
                     <span className="text-xs text-slate-500">Saved as default</span>
                   </div>
                   <div className="relative">
